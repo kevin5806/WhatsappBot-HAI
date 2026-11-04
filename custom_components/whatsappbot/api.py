@@ -79,3 +79,33 @@ class WhatsAppBotClient:
             f"/api/accounts/{account_id}/messages/send",
             json={"contactJid": target, "body": message},
         )
+
+    async def get_recent_messages(self, account_id: str, limit: int = 10) -> list[dict[str, Any]]:
+        """GET /api/accounts/{id}/messages/recent — newest first, across all contacts."""
+        data = await self._request(
+            "GET", f"/api/accounts/{account_id}/messages/recent", params={"limit": str(limit)}
+        )
+        return data if isinstance(data, list) else []
+
+    async def reconnect(self, account_id: str) -> Any:
+        """POST /api/accounts/{id}/connect — queue a (re)connect job for an existing account."""
+        return await self._request("POST", f"/api/accounts/{account_id}/connect")
+
+    async def sync_contacts(self, account_id: str) -> Any:
+        """POST /api/accounts/{id}/contacts/sync — queue a manual contact sync."""
+        return await self._request("POST", f"/api/accounts/{account_id}/contacts/sync")
+
+    async def update_reply_settings(
+        self,
+        account_id: str,
+        *,
+        reply_delay_minutes: int | None = None,
+        ai_context_messages: int | None = None,
+    ) -> dict[str, Any]:
+        """PATCH /api/accounts/{id} — omitted fields keep their current value server-side."""
+        payload: dict[str, int] = {}
+        if reply_delay_minutes is not None:
+            payload["replyDelayMinutes"] = reply_delay_minutes
+        if ai_context_messages is not None:
+            payload["aiContextMessages"] = ai_context_messages
+        return await self._request("PATCH", f"/api/accounts/{account_id}", json=payload)

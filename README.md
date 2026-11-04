@@ -5,12 +5,12 @@ A custom [Home Assistant](https://www.home-assistant.io/) integration, distribut
 [WABot Studio](https://github.com/kevin5806/WhatsappBot) — a self-hosted WhatsApp automation
 platform.
 
-Scoped down on purpose for v1: send a message and see connection status. No inbound message
-events, no rule/contact-list management from Home Assistant, no multi-account UI polish. The
-other direction (WhatsApp → Home Assistant, e.g. triggering an automation on a specific message)
-is already possible today without any of this, via WABot Studio's own "API actions" on rules (a
-rule can call an HA REST endpoint directly) and HACS-side `rest_command`/`rest` sensors calling
-this same API.
+Covers both directions: send a message and control reply timing from Home Assistant, and react
+to incoming WhatsApp messages in an automation (an `Event` trigger, not just polling). No
+rule/contact-list management from Home Assistant, no multi-account UI polish — that's still the
+web app's job. WABot Studio's own "API actions" on rules (a rule can call an HA REST endpoint
+directly) and HACS-side `rest_command`/`rest` sensors calling this same API remain available too,
+for anything not covered below.
 
 ## Installation
 
@@ -27,9 +27,41 @@ this same API.
 
 ## What you get
 
+Per account, this adds one device with:
+
 - **`sensor.wabot_studio_<account>_status`** — the account's connection status
   (`CONNECTED`/`QR_REQUIRED`/`CONNECTING`/`DISCONNECTED`/`ERROR`), polled every 60s from the app's
   database (not a live WhatsApp round-trip, so it's always fast).
+- **`binary_sensor.wabot_studio_<account>_connected`** — on/off version of the same status,
+  easier to use in a condition or trigger than matching a string.
+- **`sensor.wabot_studio_<account>_last_message`** — the most recent message (in either
+  direction); `direction`, `contact_jid`, `contact_name` and `created_at` are in the attributes.
+  Good for a dashboard or a condition — for a trigger, use the event below instead, since it
+  fires immediately rather than waiting for this sensor's next poll.
+- **`whatsappbot_message_received` event** — fired once for every new inbound message (never
+  replayed for history already seen before Home Assistant started), with `account_id`,
+  `account_label`, `contact_jid`, `contact_name`, `message` and `created_at`. Use it as an
+  automation's trigger:
+
+  ```yaml
+  triggers:
+    - trigger: event
+      event_type: whatsappbot_message_received
+      event_data:
+        account_label: My account
+  condition: "{{ 'apri il garage' in trigger.event.data.message | lower }}"
+  action:
+    - action: cover.open_cover
+      target:
+        entity_id: cover.garage
+  ```
+
+- **`number.wabot_studio_<account>_reply_delay`** and **`number.wabot_studio_<account>_ai_context_messages`**
+  — the same reply-timing settings as the account page's "Reply timing & AI context" card,
+  adjustable from an automation (e.g. shorten the delay while you're away from home).
+- **`button.wabot_studio_<account>_reconnect`** — queues a (re)connect job; useful after a
+  DISCONNECTED or ERROR status without deleting and recreating the account.
+- **`button.wabot_studio_<account>_sync_contacts`** — queues a manual contact sync from WhatsApp.
 - **`notify.<account>`** — send a WhatsApp message from an automation:
 
   ```yaml

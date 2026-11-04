@@ -25,7 +25,7 @@ async def async_get_service(
 ) -> WhatsAppBotNotificationService | None:
     if discovery_info is None:
         return None
-    client: WhatsAppBotClient = hass.data[DOMAIN][discovery_info["entry_id"]]
+    client = hass.data[DOMAIN][discovery_info["entry_id"]].client
     return WhatsAppBotNotificationService(client, discovery_info[CONF_ACCOUNT_ID])
 
 
