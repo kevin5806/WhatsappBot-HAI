@@ -1,0 +1,13 @@
+{
+  "domain": "whatsappbot",
+  "name": "WABot Studio",
+  "codeowners": ["@kevin5806"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/kevin5806/whatsappbot-hai",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/kevin5806/whatsappbot-hai/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

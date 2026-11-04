@@ -1,0 +1,26 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to WABot Studio",
+        "data": {
+          "base_url": "Base URL (e.g. https://whatsapp.example.com)",
+          "api_token": "API token (create one from Settings in the app)"
+        }
+      },
+      "account": {
+        "title": "Choose a WhatsApp account",
+        "data": {
+          "account_id": "Account"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect — check the URL and token.",
+      "no_accounts": "That token has no WhatsApp accounts to use."
+    },
+    "abort": {
+      "already_configured": "This account is already configured."
+    }
+  }
+}
