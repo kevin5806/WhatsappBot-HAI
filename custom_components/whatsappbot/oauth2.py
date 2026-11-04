@@ -13,9 +13,16 @@ import hashlib
 import logging
 import secrets
 from typing import Any
+from urllib.parse import quote
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_entry_oauth2_flow
+
+# Private, but it's the only way to produce a `state` value HA's own
+# /auth/external/callback view (OAuth2AuthorizeCallbackView.get, in this same module) will accept:
+# it JWT-decodes whatever `state` comes back, so this implementation must JWT-encode it the same
+# way going out — exactly how HA's own LocalOAuth2Implementation does it.
+from homeassistant.helpers.config_entry_oauth2_flow import _encode_jwt  # noqa: SLF001
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
@@ -67,14 +74,20 @@ class WhatsAppBotOAuth2Implementation(config_entry_oauth2_flow.AbstractOAuth2Imp
         client_id = await self._ensure_client_id(redirect_uri)
         verifier, challenge = _pkce_pair()
         self._code_verifier = verifier
+        # Bundles redirect_uri into the state too (not just flow_id), same as
+        # LocalOAuth2Implementation: async_resolve_external_data reads it back from there instead
+        # of calling async_get_redirect_uri again, in case it ever differs between the two calls.
+        state = _encode_jwt(self.hass, {"flow_id": flow_id, "redirect_uri": redirect_uri})
         return (
             f"{self._base_url}/oauth/authorize"
-            f"?response_type=code&client_id={client_id}&redirect_uri={redirect_uri}"
-            f"&code_challenge={challenge}&code_challenge_method=S256&state={flow_id}"
+            f"?response_type=code&client_id={quote(client_id, safe='')}"
+            f"&redirect_uri={quote(redirect_uri, safe='')}"
+            f"&code_challenge={quote(challenge, safe='')}&code_challenge_method=S256"
+            f"&state={quote(state, safe='')}"
         )
 
     async def async_resolve_external_data(self, external_data: Any) -> dict:
-        redirect_uri = config_entry_oauth2_flow.async_get_redirect_uri(self.hass)
+        redirect_uri = external_data["state"]["redirect_uri"]
         session = async_get_clientsession(self.hass)
         async with session.post(
             f"{self._base_url}/api/oauth/token",
