@@ -5,7 +5,7 @@
         "title": "Connect to WABot Studio",
         "description": "You'll be sent to your WABot Studio instance's own login/authorize screen next.",
         "data": {
-          "base_url": "Base URL (e.g. https://whatsapp.example.com)"
+          "base_url": "Base URL of your WABot Studio instance"
         }
       },
       "auth": {
