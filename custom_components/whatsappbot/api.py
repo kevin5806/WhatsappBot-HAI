@@ -2,11 +2,24 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import aiohttp
 
 REQUEST_TIMEOUT = 10
+
+TokenGetter = Callable[[], Awaitable[str]]
+
+
+def static_token(access_token: str) -> TokenGetter:
+    """Wraps a fixed access token (used during config_flow, before a refreshing OAuth2Session
+    exists yet) in the same TokenGetter shape the runtime client uses."""
+
+    async def _get() -> str:
+        return access_token
+
+    return _get
 
 
 class WhatsAppBotApiError(Exception):
@@ -19,18 +32,24 @@ class WhatsAppBotClient:
     Every route returns {"ok": true, "data": ...} or {"ok": false, "error": ...} — see
     WhatsappBot's lib/http.ts. This client unwraps that envelope and raises
     WhatsAppBotApiError on anything that isn't a clean "ok" response.
+
+    Takes a TokenGetter rather than a fixed token so the caller controls refresh: the runtime
+    client (__init__.py) passes one backed by HA's OAuth2Session (ensures the token is valid,
+    refreshing it via the authorization server when needed, before every call).
     """
 
-    def __init__(self, session: aiohttp.ClientSession, base_url: str, api_token: str) -> None:
+    def __init__(self, session: aiohttp.ClientSession, base_url: str, token: str | TokenGetter) -> None:
         self._session = session
         self._base_url = base_url.rstrip("/")
-        self._headers = {"Authorization": f"Bearer {api_token}"}
+        self._get_token: TokenGetter = static_token(token) if isinstance(token, str) else token
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         url = f"{self._base_url}{path}"
+        access_token = await self._get_token()
+        headers = {"Authorization": f"Bearer {access_token}"}
         try:
             async with asyncio.timeout(REQUEST_TIMEOUT):
-                resp = await self._session.request(method, url, headers=self._headers, **kwargs)
+                resp = await self._session.request(method, url, headers=headers, **kwargs)
                 body = await resp.json(content_type=None)
         except (aiohttp.ClientError, TimeoutError) as err:
             raise WhatsAppBotApiError(f"Cannot reach {url}: {err}") from err
@@ -38,13 +57,13 @@ class WhatsAppBotClient:
         if not isinstance(body, dict):
             raise WhatsAppBotApiError(f"Unexpected response from {url}")
         if resp.status == 401:
-            raise WhatsAppBotApiError("Invalid or revoked API token")
+            raise WhatsAppBotApiError("Access token rejected — re-authorize the integration")
         if not body.get("ok"):
             raise WhatsAppBotApiError(str(body.get("error") or f"HTTP {resp.status}"))
         return body.get("data")
 
     async def list_accounts(self) -> list[dict[str, Any]]:
-        """GET /api/accounts — used to validate the token and let the user pick an account."""
+        """GET /api/accounts — used right after authorizing to let the user pick an account."""
         data = await self._request("GET", "/api/accounts")
         return data if isinstance(data, list) else []
 

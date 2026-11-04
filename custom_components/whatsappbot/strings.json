@@ -3,10 +3,13 @@
     "step": {
       "user": {
         "title": "Connect to WABot Studio",
+        "description": "You'll be sent to your WABot Studio instance's own login/authorize screen next.",
         "data": {
-          "base_url": "Base URL (e.g. https://whatsapp.example.com)",
-          "api_token": "API token (create one from Settings in the app)"
+          "base_url": "Base URL (e.g. https://whatsapp.example.com)"
         }
+      },
+      "auth": {
+        "title": "Authorize Home Assistant"
       },
       "account": {
         "title": "Choose a WhatsApp account",
@@ -15,12 +18,13 @@
         }
       }
     },
-    "error": {
-      "cannot_connect": "Could not connect — check the URL and token.",
-      "no_accounts": "That token has no WhatsApp accounts to use."
-    },
     "abort": {
-      "already_configured": "This account is already configured."
+      "already_configured": "This account is already configured.",
+      "cannot_connect": "Connected, but couldn't list WhatsApp accounts with that authorization — check the instance and try again.",
+      "no_accounts": "That authorization has no WhatsApp accounts to use.",
+      "oauth_error": "Invalid authorization response, please try again.",
+      "oauth_timeout": "Authorization timed out, please try again.",
+      "oauth_unauthorized": "Authorization failed, please try again."
     }
   }
 }

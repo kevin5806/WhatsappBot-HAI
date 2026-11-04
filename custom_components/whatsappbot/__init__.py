@@ -4,11 +4,12 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import discovery
+from homeassistant.helpers import config_entry_oauth2_flow, discovery
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import WhatsAppBotClient
-from .const import CONF_ACCOUNT_ID, CONF_API_TOKEN, CONF_BASE_URL, DOMAIN
+from .const import CONF_ACCOUNT_ID, CONF_BASE_URL, DOMAIN
+from .oauth2 import WhatsAppBotOAuth2Implementation
 
 # notify has no config-entry-based unload hook of its own (it's still the classic
 # BaseNotificationService platform, set up via discovery below), so removing the integration
@@ -17,8 +18,15 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    implementation = WhatsAppBotOAuth2Implementation(hass, entry.data[CONF_BASE_URL])
+    oauth_session = config_entry_oauth2_flow.OAuth2Session(hass, entry, implementation)
+
+    async def _get_access_token() -> str:
+        await oauth_session.async_ensure_token_valid()
+        return oauth_session.token["access_token"]
+
     session = async_get_clientsession(hass)
-    client = WhatsAppBotClient(session, entry.data[CONF_BASE_URL], entry.data[CONF_API_TOKEN])
+    client = WhatsAppBotClient(session, entry.data[CONF_BASE_URL], _get_access_token)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = client
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

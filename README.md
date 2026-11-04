@@ -18,10 +18,12 @@ this same API.
    `https://github.com/kevin5806/whatsappbot-hai`
 2. Install "WABot Studio", then restart Home Assistant.
 3. Settings → Devices & Services → Add Integration → "WABot Studio".
-4. Enter your WABot Studio instance's base URL and an API token (create one from the app's
-   Settings page).
-5. If the token has access to more than one WhatsApp account, pick which one this entry is for.
-   Add the integration again, picking a different account, to add a second one.
+4. Enter your WABot Studio instance's base URL. You'll be sent to that instance's own
+   login/authorize screen — no API token to create and copy by hand: this registers Home
+   Assistant as an OAuth client on the fly (the same OAuth 2.1 flow the MCP connector uses) and
+   gets a token after you log in and approve it.
+5. If the authorization covers more than one WhatsApp account, pick which one this entry is for.
+   Add the integration again, authorizing and picking a different account, to add a second one.
 
 ## What you get
 
