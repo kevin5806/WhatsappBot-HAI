@@ -52,3 +52,7 @@ pip install -r requirements_test.txt  # if/when added
 
 This repo is validated on every push via [hassfest](https://developers.home-assistant.io/docs/creating_integration_manifest/#hassfest)
 and the [HACS action](https://github.com/hacs/action).
+
+## License
+
+[MIT](LICENSE)
