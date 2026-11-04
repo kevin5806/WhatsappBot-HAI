@@ -30,6 +30,7 @@ class WhatsAppBotConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, 
     """One config entry = one WhatsApp account, matching how notify/sensor are scoped. Adding
     the integration again (picking a different account in the final step) adds a second one."""
 
+    DOMAIN = DOMAIN
     VERSION = 1
 
     def __init__(self) -> None:
