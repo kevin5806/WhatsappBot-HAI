@@ -44,6 +44,21 @@ this same API.
   `target` is required: a contact's JID (`<number>@s.whatsapp.net` or `<number>@c.us`) or a
   group's JID (`...@g.us`).
 
+- **A Lovelace card** (`wabot-studio-card`) — status dot + a quick send form, no manual resource
+  setup needed (registered automatically via `frontend.add_extra_js_url`). Add it as a
+  "Manual" card in the dashboard editor:
+
+  ```yaml
+  type: custom:wabot-studio-card
+  entity: sensor.wabot_studio_my_account_status
+  notify_service: notify.wabot_studio_my_account
+  title: WABot Studio # optional
+  ```
+
+  Replace `my_account` with the slug Home Assistant gave your account's entities (check
+  Settings → Devices & Services → Entities, or the `notify.*` service listed under
+  Developer Tools → Actions).
+
 ## Development
 
 ```bash
