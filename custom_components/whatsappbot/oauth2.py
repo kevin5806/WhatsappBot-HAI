@@ -91,7 +91,7 @@ class WhatsAppBotOAuth2Implementation(config_entry_oauth2_flow.AbstractOAuth2Imp
             raise ValueError(f"Token exchange failed: {token.get('error', token)}")
         return token
 
-    async def async_refresh_token(self, token: dict) -> dict:
+    async def _async_refresh_token(self, token: dict) -> dict:
         session = async_get_clientsession(self.hass)
         async with session.post(
             f"{self._base_url}/api/oauth/token",
