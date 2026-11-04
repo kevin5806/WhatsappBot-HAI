@@ -87,6 +87,17 @@ class WhatsAppBotClient:
         )
         return data if isinstance(data, list) else []
 
+    async def get_matched_messages(self, account_id: str, limit: int = 10) -> list[dict[str, Any]]:
+        """GET /api/accounts/{id}/messages/recent?matchedOnly=true — inbound messages a rule
+        (static, AI, or default) actually matched, most-recently-resolved first. Resolution can
+        land well after the message arrived, since a block waits out its full reply delay first."""
+        data = await self._request(
+            "GET",
+            f"/api/accounts/{account_id}/messages/recent",
+            params={"limit": str(limit), "matchedOnly": "true"},
+        )
+        return data if isinstance(data, list) else []
+
     async def reconnect(self, account_id: str) -> Any:
         """POST /api/accounts/{id}/connect — queue a (re)connect job for an existing account."""
         return await self._request("POST", f"/api/accounts/{account_id}/connect")

@@ -67,6 +67,7 @@ integration entry, holding all the entities below.
 | `button.wabot_studio_<account>_sync_contacts` | Queues a manual contact sync from WhatsApp. |
 | `notify.wabot_studio_<account>` | Send a WhatsApp message (see below). |
 | `whatsappbot_message_received` event | Fired once per **new** inbound message — see below. |
+| `whatsappbot_rule_matched` event | Fired once a static/AI/default rule actually matched an inbound message — see below. |
 
 The exact `<account>` slug is whatever Home Assistant made from your account's label — check
 Settings → Devices & services → Entities (filter by the device) to see them precisely, or
@@ -83,9 +84,16 @@ data:
   target: "393331112222@s.whatsapp.net"
 ```
 
-`target` is required: a contact's JID (`<number>@s.whatsapp.net` or `<number>@c.us`) or a group's
-JID (`...@g.us`). You can look JIDs up from the account page in the app, or from a recent
-message's `contact_jid` attribute (see the last-message sensor above).
+`target` is required, and accepts any of:
+- a contact's JID (`<number>@s.whatsapp.net` or `<number>@c.us`) or a group's JID (`...@g.us`) —
+  look these up from the account page in the app, or from a recent message's `contact_jid`
+  attribute (see the last-message sensor above);
+- a bare phone number;
+- **a contact's stored name** (case-insensitive — an exact match wins, otherwise a single
+  "contains" match), e.g. `target: "Luca"`. This is what makes a voice command like *"tell my
+  assistant to WhatsApp Luca that I'm running late"* work without knowing anyone's JID — see
+  the voice assistant example below. If the name matches nobody, or more than one contact, the
+  call fails with a clear error instead of guessing.
 
 ### Reacting to an incoming message
 
@@ -105,6 +113,52 @@ action:
   - action: cover.open_cover
     target:
       entity_id: cover.garage
+```
+
+### Reacting to a rule match
+
+`whatsappbot_message_received` fires on *every* new inbound message, matched or not. If instead
+you want "run this automation when my AI/static rule actually recognized the message" — e.g. a
+rule whose job is to respond to "apri il garage" style requests should also open the real
+garage — use `whatsappbot_rule_matched` instead. It fires once a block's rules finish evaluating
+(which can be minutes after the message arrived, since a block waits out its full reply delay
+first), with `account_id`, `account_label`, `contact_jid`, `contact_name`, `message`, `rule_id`,
+`rule_label`, `action_type` (`STATIC_REPLY` or `AI_REPLY`) and `processed_at`. Like
+`whatsappbot_message_received`, it never replays old history on a Home Assistant restart.
+
+```yaml
+triggers:
+  - trigger: event
+    event_type: whatsappbot_rule_matched
+condition: "{{ 'garage' in trigger.event.data.rule_label | lower }}"
+action:
+  - action: cover.open_cover
+    target:
+      entity_id: cover.garage
+```
+
+### A voice assistant that sends WhatsApp messages by name
+
+Combine an automation's [sentence trigger](https://www.home-assistant.io/voice_control/custom_sentences/)
+with `notify.send_message`'s by-name `target` (see "Sending a message" above) to make Assist (or
+any voice satellite) handle *"manda un messaggio whatsapp a Luca dicendo sono in ritardo"*
+without you writing any JID anywhere. Add this as an automation (Settings → Automations &
+Scenes → Automations → Add automation → Edit in YAML), then say one of its sentences to Assist:
+
+```yaml
+alias: WhatsApp a qualcuno
+triggers:
+  - trigger: conversation
+    command:
+      - "manda un messaggio whatsapp a {name} dicendo {message}"
+      - "scrivi su whatsapp a {name} {message}"
+actions:
+  - action: notify.send_message
+    target:
+      entity_id: notify.wabot_studio_my_account
+    data:
+      target: "{{ trigger.slots.name }}"
+      message: "{{ trigger.slots.message }}"
 ```
 
 ### Adjusting reply timing from an automation
