@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -79,6 +80,45 @@ class WhatsAppBotClient:
             f"/api/accounts/{account_id}/messages/send",
             json={"contactJid": target, "body": message},
         )
+
+    async def send_media(
+        self,
+        account_id: str,
+        target: str,
+        image_bytes: bytes,
+        mimetype: str,
+        *,
+        filename: str | None = None,
+        caption: str | None = None,
+    ) -> Any:
+        """POST /api/accounts/{id}/messages/send-media — target is a contact or group JID."""
+        payload: dict[str, Any] = {
+            "contactJid": target,
+            "mediaBase64": base64.b64encode(image_bytes).decode(),
+            "mimetype": mimetype,
+        }
+        if filename:
+            payload["filename"] = filename
+        if caption:
+            payload["caption"] = caption
+        return await self._request(
+            "POST",
+            f"/api/accounts/{account_id}/messages/send-media",
+            json=payload,
+        )
+
+    async def fetch_url_bytes(self, url: str) -> tuple[bytes, str]:
+        """Downloads a URL (e.g. a Frigate snapshot/clip) and returns (content, content_type)."""
+        try:
+            async with asyncio.timeout(REQUEST_TIMEOUT):
+                resp = await self._session.get(url)
+                content = await resp.read()
+        except (aiohttp.ClientError, TimeoutError) as err:
+            raise WhatsAppBotApiError(f"Cannot fetch {url}: {err}") from err
+        if resp.status != 200:
+            raise WhatsAppBotApiError(f"Fetching {url} returned HTTP {resp.status}")
+        content_type = resp.content_type or "application/octet-stream"
+        return content, content_type
 
     async def get_recent_messages(self, account_id: str, limit: int = 10) -> list[dict[str, Any]]:
         """GET /api/accounts/{id}/messages/recent — newest first, across all contacts."""

@@ -7,15 +7,20 @@ notify domain's config-entry support is for the single-target entity model.
 """
 from __future__ import annotations
 
+import os
 from typing import Any
 
-from homeassistant.components.notify import ATTR_TARGET, BaseNotificationService
+from homeassistant.components.notify import ATTR_DATA, ATTR_TARGET, BaseNotificationService
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
 from .api import WhatsAppBotApiError, WhatsAppBotClient
 from .const import CONF_ACCOUNT_ID, DOMAIN
+
+# data: image_url is a URL this integration fetches itself (e.g. a Frigate snapshot/clip URL) —
+# the automation author never has to deal with base64 encoding.
+ATTR_IMAGE_URL = "image_url"
 
 
 async def async_get_service(
@@ -43,7 +48,20 @@ class WhatsAppBotNotificationService(BaseNotificationService):
                 "A target (contact or group JID) is required, e.g. target: '393331112222@s.whatsapp.net'"
             )
         target = targets[0] if isinstance(targets, list) else targets
+        image_url = (kwargs.get(ATTR_DATA) or {}).get(ATTR_IMAGE_URL)
         try:
-            await self._client.send_message(self._account_id, target, message)
+            if image_url:
+                image_bytes, content_type = await self._client.fetch_url_bytes(image_url)
+                filename = os.path.basename(image_url.split("?", 1)[0]) or None
+                await self._client.send_media(
+                    self._account_id,
+                    target,
+                    image_bytes,
+                    content_type,
+                    filename=filename,
+                    caption=message,
+                )
+            else:
+                await self._client.send_message(self._account_id, target, message)
         except WhatsAppBotApiError as err:
             raise HomeAssistantError(f"Failed to send WhatsApp message: {err}") from err

@@ -95,6 +95,19 @@ data:
   the voice assistant example below. If the name matches nobody, or more than one contact, the
   call fails with a clear error instead of guessing.
 
+Add `image_url` to send a photo or video alongside the text (the text becomes the caption).
+The integration downloads the URL itself — no base64 encoding needed in the automation:
+
+```yaml
+action: notify.send_message
+target:
+  entity_id: notify.wabot_studio_my_account
+data:
+  message: "Front gate camera"
+  target: "393331112222@s.whatsapp.net"
+  image_url: "https://frigate.example.com/api/events/<event_id>/snapshot.jpg"
+```
+
 ### Reacting to an incoming message
 
 `whatsappbot_message_received` fires for every new inbound message, with `account_id`,
